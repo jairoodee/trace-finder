@@ -1,5 +1,6 @@
+import analyzer.LogAnalyzer;
+import model.LogEntry;
+
 public class TraceFinder {
-    public static void main (String[] args){
-        
-    }
+   
 }
