@@ -1,13 +1,15 @@
 package model;
 
+import java.time.LocalDateTime;
+
 public class LogEntry {
-    private String timestamp;
+    private LocalDateTime timestamp;
     private String level;
     private String sourceIP;
     private String target;
     private String action;
 
-    public LogEntry(String timestamp, String level, String sourceIP, String target, String action){
+    public LogEntry(LocalDateTime timestamp, String level, String sourceIP, String target, String action){
         this.timestamp = timestamp;
         this.level = level;
         this.sourceIP = sourceIP;
@@ -15,7 +17,7 @@ public class LogEntry {
         this.action = action;
     }
 
-    public String getTimestamp(){
+    public LocalDateTime getTimestamp(){
         return this.timestamp;
     }
 
