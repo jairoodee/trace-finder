@@ -1,6 +1,7 @@
 package parser;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import analyzer.LogAnalyzer;
 import model.LogEntry;
@@ -11,7 +12,14 @@ public class LogParser {
         if(parts.length != 5){
            return null;
         }
-        LocalDateTime timestamp = LocalDateTime.parse(parts[0]);
+        
+        LocalDateTime timestamp;
+
+        try{
+            timestamp = LocalDateTime.parse(parts[0]);
+        } catch(DateTimeParseException e){
+            return null;
+        }
         LogEntry newLog = new LogEntry(timestamp, parts[1], parts[2], parts[3], parts[4]);
         return newLog;
     }
