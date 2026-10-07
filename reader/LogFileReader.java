@@ -131,4 +131,9 @@ public class LogFileReader {
                     thisFile.getMalformedLines().get(0).getLineNumber());
         }
     }
+<<<<<<< HEAD
 }
+=======
+}
+```
+>>>>>>> bae87363815e2e13399d4683348e739e587dc4c9
