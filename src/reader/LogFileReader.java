@@ -1,31 +1,13 @@
-```java
 package reader;
 
-// IOException is used when a file-reading operation fails.
 import java.io.IOException;
-
-// Files provides methods for reading file contents.
 import java.nio.file.Files;
-
-// Path represents the location of a file.
 import java.nio.file.Path;
-
-// List is the interface used to represent a collection of items.
 import java.util.List;
-
-// ArrayList is a resizable list that grows as items are added.
 import java.util.ArrayList;
-
-// Collections provides utility methods, including unmodifiableList().
 import java.util.Collections;
-
-// MalformedLine represents a log line that could not be parsed.
 import model.MalformedLine;
-
-// LogParser is responsible for converting a raw line into a LogEntry.
 import parser.LogParser;
-
-// LogEntry represents a successfully parsed log record.
 import model.LogEntry;
 
 public class LogFileReader {
