@@ -4,10 +4,13 @@ package reader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import model.Rule;
+import model.LogEntry;
+import analyzer.SeverityChecker;
 
 public class RuleBookReader {
 
@@ -108,6 +111,7 @@ public class RuleBookReader {
         }
     }
 
+
     /**
      * Temporary test harness for the RuleBookReader.
      *
@@ -120,17 +124,12 @@ public class RuleBookReader {
      */
     public static void main(String[] args) throws IOException {
         // Create a RuleBookReader instance.
-        RuleBookReader myRule = new RuleBookReader();
-
+        RuleBookReader newRuleBook = new RuleBookReader();
+        SeverityChecker newCheck = new SeverityChecker();
+        LogEntry newLog = new LogEntry(LocalDateTime.parse("2024-03-15T08:33:10"), "WARN", "10.0.0.2", "server02", "LOGIN_FAILED");
         // Load and validate the rules from the CSV file.
-        myRule.readCSV("rules.csv");
-
-        // Retrieve the loaded rules through the read-only list.
-        List<Rule> theRules = myRule.getRules();
-
-        // Print each rule's level and severity score.
-        for (Rule rule : theRules) {
-            System.out.println(rule.getLevel() + " " + rule.getScore());
-        }
+        newRuleBook.readCSV("rules.csv");
+        int returnedScore = newCheck.checkLogEntry(newRuleBook, newLog);
+        System.out.println(returnedScore);
     }
 }
