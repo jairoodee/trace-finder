@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import model.Rule;
+import model.UnknownPattern;
 import model.LogEntry;
 import analyzer.LogAnalyzer;
 import analyzer.SeverityChecker;
@@ -125,18 +126,18 @@ public class RuleBookReader {
      */
     public static void main(String args[]) throws IOException{
         RuleBookReader newRuleBook = new RuleBookReader();
-        SeverityChecker newCheck = new SeverityChecker();
-        LogEntry newLog = new LogEntry(LocalDateTime.parse("2024-03-15T08:33:10"), "ERROR", "10.0.0.2", "server02", "LOGIN_FAILED");
-        LogEntry newLog2 = new LogEntry(LocalDateTime.parse("2024-03-15T08:33:10"), "WARN", "10.0.0.2", "server02", "LOGIN_FAILED");
-        LogEntry newLog3 = new LogEntry(LocalDateTime.parse("2024-03-15T08:33:10"), "CRITICAL", "10.0.0.2", "server02", "LOGIN_FAILED");
-        LogEntry newLog4 = new LogEntry(LocalDateTime.parse("2024-03-15T08:33:10"), "INFO", "10.0.0.2", "server02", "LOGIN_FAILED");
-        LogAnalyzer newAnalyzer = new LogAnalyzer();
-        // Load and validate the rules from the CSV file.
         newRuleBook.readCSV("rules.csv");
-        newAnalyzer.analyzeEntry(newCheck, newLog, newRuleBook);
-        newAnalyzer.analyzeEntry(newCheck, newLog2, newRuleBook);
-        newAnalyzer.analyzeEntry(newCheck, newLog3, newRuleBook);
-        newAnalyzer.analyzeEntry(newCheck, newLog4, newRuleBook);
-        System.out.println(newAnalyzer.getFlaggedEntries().size());
+        SeverityChecker newCheck = new SeverityChecker();
+        LogAnalyzer newAnalysis = new LogAnalyzer();
+        LogAnalyzer newAnalysis2 = new LogAnalyzer();
+        int lineNumber = 2;
+        String rawContent = "2026-10-15T10:01:00|DEBUG|192.168.1.20|server|Unexpected event";
+        // UnknownPattern newLog = new UnknownPattern(2, "2026-10-15T10:01:00|DEBUG|192.168.1.20|server|Unexpected event");
+        LogEntry newLog = new LogEntry(LocalDateTime.parse("2026-10-15T10:01:00"), "WARN", "192.168.1.20", "server", "Unexpected event");
+        newAnalysis.analyzeEntry(newCheck, newLog, newRuleBook, lineNumber, rawContent );
+        newAnalysis2.analyzeEntry(newCheck, newLog, newRuleBook, lineNumber, rawContent );
+        // System.out.println(newAnalysis.getUnknownPatterns().size() + " " + lineNumber + " " + rawContent);
+        System.out.println(newAnalysis2.getUnknownPatterns().size());
+        System.out.println(newAnalysis2.getFlaggedEntries().size());
     }
 }

@@ -1,3 +1,4 @@
+
 package analyzer;
 
 import java.util.ArrayList;
@@ -5,28 +6,35 @@ import java.util.Collections;
 import java.util.List;
 
 import model.LogEntry;
+import model.UnknownPattern;
 import reader.RuleBookReader;
 
 /**
- * Analyzes log entries and identifies entries that meet the
- * minimum severity threshold for flagging.
+ * Analyzes valid log entries by identifying flagged entries and
+ * unknown patterns.
  *
- * This class uses SeverityChecker to determine the severity
- * score of each entry and stores entries with a score of 3 or higher.
+ * Known entries are flagged when their severity score is at least 3.
+ * Entries with levels absent from the rulebook are stored separately
+ * with their original line numbers and raw content.
  */
 public class LogAnalyzer {
 
     /**
-     * Stores all log entries whose severity score is at least 3.
-     * Entries accumulate as analyzeEntry() processes additional logs.
+     * Stores log entries whose severity score is at least 3.
      */
     private List<LogEntry> flaggedEntries = new ArrayList<>();
 
     /**
-     * Returns an unmodifiable view of the flagged log entries.
+     * Stores entries with unknown levels, preserving their original
+     * line numbers and raw content for reporting.
+     */
+    private List<UnknownPattern> unknownPatterns = new ArrayList<>();
+
+    /**
+     * Returns an unmodifiable view of the flagged entries.
      *
-     * The returned list allows callers to inspect flagged entries
-     * without directly adding or removing entries through the list.
+     * Callers can inspect the results but cannot add or remove entries
+     * through the returned list.
      *
      * @return an unmodifiable list of flagged log entries
      */
@@ -36,23 +44,51 @@ public class LogAnalyzer {
     }
 
     /**
-     * Checks a log entry's severity and stores it if it meets
-     * the flagging threshold.
+     * Returns an unmodifiable view of the unknown patterns.
      *
-     * An entry is flagged when its severity score is greater than
-     * or equal to 3. Entries below this threshold are not added.
-     * Existing flagged entries remain in the collection.
+     * Each unknown pattern retains the original line number and raw
+     * content so the reporting stage can identify its source.
      *
-     * @param severityChecker checks the severity score of a log entry
-     * @param logEntry the log entry being analyzed
-     * @param rulebookReader provides the rules used to determine severity
+     * @return an unmodifiable list of unknown patterns
      */
-    public void analyzeEntry(SeverityChecker severityChecker, 
-                                LogEntry logEntry, 
-                                RuleBookReader rulebookReader){
-        int severityScore = severityChecker.checkLogEntry(rulebookReader, logEntry);
-        if(severityScore >= 3){
-            flaggedEntries.add(logEntry);
+    public List<UnknownPattern> getUnknownPatterns(){
+        List<UnknownPattern> readOnlyUnknownPatterns = Collections.unmodifiableList(this.unknownPatterns);
+        return readOnlyUnknownPatterns;
+    }
+
+    /**
+     * Classifies one parsed log entry using the loaded rulebook.
+     *
+     * If the entry's level is unknown, an UnknownPattern is stored
+     * using the supplied original line number and raw content.
+     * Otherwise, the entry is flagged only when its severity score
+     * is greater than or equal to 3.
+     *
+     * @param severityChecker checks whether the level is known and
+     *                        retrieves its severity score
+     * @param logEntry the parsed log entry being analyzed
+     * @param rulebookReader provides the loaded severity rules
+     * @param lineNumber the original one-based line number
+     * @param rawContent the original, unmodified log line
+     */
+    public void analyzeEntry(SeverityChecker severityChecker,
+                                LogEntry logEntry,
+                                RuleBookReader rulebookReader,
+                                int lineNumber,
+                                String rawContent){
+
+        // Unknown levels are recorded separately from flagged entries.
+        if(severityChecker.isKnownLevel(rulebookReader, logEntry) == false){
+            UnknownPattern newunknownPattern = new UnknownPattern(lineNumber, rawContent);
+            unknownPatterns.add(newunknownPattern);
+        } else{
+
+            // Only known levels are checked against the flagging threshold.
+            int severityScore = severityChecker.checkLogEntry(rulebookReader, logEntry);
+
+            if(severityScore >= 3){
+                flaggedEntries.add(logEntry);
+            }
         }
     }
 }

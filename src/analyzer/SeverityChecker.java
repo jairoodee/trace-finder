@@ -3,10 +3,6 @@ package analyzer;
 
 import reader.RuleBookReader;
 import model.Rule;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import model.LogEntry;
 
 /**
@@ -17,8 +13,6 @@ import model.LogEntry;
  * It does not read files or modify log entries.
  */
 public class SeverityChecker {
-
-    private List<LogEntry> flaggedEntries = new ArrayList<>();
 
     /**
      * Finds the severity score associated with a log entry's level.
@@ -54,10 +48,6 @@ public class SeverityChecker {
                     // Store the severity score of the matching rule.
                     severityScore = rule.getScore();
 
-                    if(severityScore >= 3){
-                        flaggedEntries.add(logEntry);
-                    }
-
                     // Stop searching because a matching rule was found.
                     break;
                 }
@@ -65,5 +55,37 @@ public class SeverityChecker {
 
         // Return the matching score, or 0 if no match was found.
         return severityScore;
+    }
+
+    /**
+     * Determines whether the log entry's level exists in the rulebook.
+     *
+     * Compares the entry's level against each loaded rule using a
+     * case-sensitive comparison. Returns immediately when a match
+     * is found; otherwise, returns false after checking every rule.
+     *
+     * This method distinguishes an unknown level from a known level
+     * whose severity score is below the flagging threshold.
+     *
+     * @param ruleBookReader a RuleBookReader containing loaded rules
+     * @param logEntry the log entry whose level is being checked
+     * @return true if the level matches a rule; false otherwise
+     */
+    public boolean isKnownLevel(RuleBookReader ruleBookReader, LogEntry logEntry){
+
+        // Examine each rule in the loaded rulebook.
+        for(int i = 0; i < ruleBookReader.getRules().size(); i++){
+
+            // Retrieve the rule at the current index.
+            Rule rule = ruleBookReader.getRules().get(i);
+
+            // Return true as soon as the entry's level matches a rule.
+            if(logEntry.getLevel().equals(rule.getLevel())){
+                return true;
+            }
+        }
+
+        // No matching rule was found.
+        return false;
     }
 }
