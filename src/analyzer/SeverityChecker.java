@@ -3,6 +3,10 @@ package analyzer;
 
 import reader.RuleBookReader;
 import model.Rule;
+
+import java.util.ArrayList;
+import java.util.List;
+
 import model.LogEntry;
 
 /**
@@ -13,6 +17,8 @@ import model.LogEntry;
  * It does not read files or modify log entries.
  */
 public class SeverityChecker {
+
+    private List<LogEntry> flaggedEntries = new ArrayList<>();
 
     /**
      * Finds the severity score associated with a log entry's level.
@@ -47,6 +53,10 @@ public class SeverityChecker {
 
                     // Store the severity score of the matching rule.
                     severityScore = rule.getScore();
+
+                    if(severityScore >= 3){
+                        flaggedEntries.add(logEntry);
+                    }
 
                     // Stop searching because a matching rule was found.
                     break;

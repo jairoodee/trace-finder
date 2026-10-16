@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.List;
 import model.Rule;
 import model.LogEntry;
+import analyzer.LogAnalyzer;
 import analyzer.SeverityChecker;
 
 public class RuleBookReader {
@@ -122,14 +123,20 @@ public class RuleBookReader {
      * @param args command-line arguments (currently unused)
      * @throws IOException if the rulebook file cannot be read
      */
-    public static void main(String[] args) throws IOException {
-        // Create a RuleBookReader instance.
+    public static void main(String args[]) throws IOException{
         RuleBookReader newRuleBook = new RuleBookReader();
         SeverityChecker newCheck = new SeverityChecker();
-        LogEntry newLog = new LogEntry(LocalDateTime.parse("2024-03-15T08:33:10"), "WARN", "10.0.0.2", "server02", "LOGIN_FAILED");
+        LogEntry newLog = new LogEntry(LocalDateTime.parse("2024-03-15T08:33:10"), "ERROR", "10.0.0.2", "server02", "LOGIN_FAILED");
+        LogEntry newLog2 = new LogEntry(LocalDateTime.parse("2024-03-15T08:33:10"), "WARN", "10.0.0.2", "server02", "LOGIN_FAILED");
+        LogEntry newLog3 = new LogEntry(LocalDateTime.parse("2024-03-15T08:33:10"), "CRITICAL", "10.0.0.2", "server02", "LOGIN_FAILED");
+        LogEntry newLog4 = new LogEntry(LocalDateTime.parse("2024-03-15T08:33:10"), "INFO", "10.0.0.2", "server02", "LOGIN_FAILED");
+        LogAnalyzer newAnalyzer = new LogAnalyzer();
         // Load and validate the rules from the CSV file.
         newRuleBook.readCSV("rules.csv");
-        int returnedScore = newCheck.checkLogEntry(newRuleBook, newLog);
-        System.out.println(returnedScore);
+        newAnalyzer.analyzeEntry(newCheck, newLog, newRuleBook);
+        newAnalyzer.analyzeEntry(newCheck, newLog2, newRuleBook);
+        newAnalyzer.analyzeEntry(newCheck, newLog3, newRuleBook);
+        newAnalyzer.analyzeEntry(newCheck, newLog4, newRuleBook);
+        System.out.println(newAnalyzer.getFlaggedEntries().size());
     }
 }
