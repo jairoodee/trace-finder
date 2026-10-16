@@ -1,3 +1,4 @@
+
 package reader;
 
 import java.io.IOException;
@@ -6,30 +7,58 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
+
+import model.LogEntry;
 import model.MalformedLine;
 import parser.LogParser;
-import model.LogEntry;
+import model.ParsedLogLine;
 
+/**
+ * Reads a log file and separates successfully parsed entries from
+ * malformed lines.
+ *
+ * Valid entries are stored as ParsedLogLine objects so their original
+ * line numbers and raw content remain available for later analysis.
+ * Malformed lines are stored separately with their original source
+ * information.
+ */
 public class LogFileReader {
 
-    // Stores all successfully parsed log entries.
-    // The ArrayList can grow as more valid entries are discovered.
-    private List<LogEntry> logEntries = new ArrayList<>();
+    /**
+     * Stores successfully parsed log entries together with their
+     * original line numbers and raw content.
+     */
+    private List<ParsedLogLine> logEntries = new ArrayList<>();
 
-    // Stores malformed lines, preserving their line numbers and original content.
+    /**
+     * Stores malformed lines with their original line numbers
+     * and unmodified content.
+     */
     private List<MalformedLine> malformedLines = new ArrayList<>();
 
-    // Returns an unmodifiable view of the valid log entries.
-    // Callers can inspect the list but cannot modify it through this reference.
-    public List<LogEntry> getLogEntries() {
-        List<LogEntry> readOnlyLogEntries =
+    /**
+     * Returns an unmodifiable view of the successfully parsed entries.
+     *
+     * The returned list allows callers to inspect the entries without
+     * adding or removing items through this reference.
+     *
+     * @return an unmodifiable list of parsed log lines
+     */
+    public List<ParsedLogLine> getLogEntries() {
+        List<ParsedLogLine> readOnlyLogEntries =
                 Collections.unmodifiableList(this.logEntries);
 
         return readOnlyLogEntries;
     }
 
-    // Returns an unmodifiable view of the malformed lines.
-    // The original collection remains private to this class.
+    /**
+     * Returns an unmodifiable view of the malformed lines.
+     *
+     * Each malformed line retains its original line number and content
+     * so the reporting component can identify its source.
+     *
+     * @return an unmodifiable list of malformed lines
+     */
     public List<MalformedLine> getMalformedLines() {
         List<MalformedLine> readOnlyMalformedLines =
                 Collections.unmodifiableList(this.malformedLines);
@@ -37,12 +66,26 @@ public class LogFileReader {
         return readOnlyMalformedLines;
     }
 
-    // Reads the log file at the supplied file path.
-    // IOException is declared so the calling code can handle file-reading failures.
-    public void readFile(String FilePath) throws IOException {
+    /**
+     * Reads and parses the contents of the file at the supplied path.
+     *
+     * Each line is assigned its original one-based line number.
+     * Successfully parsed lines are stored as ParsedLogLine objects;
+     * lines rejected by LogParser are recorded as MalformedLine objects.
+     *
+     * This method does not suppress file-reading errors. An IOException
+     * is propagated to the calling code for handling.
+     *
+     * Note: calling this method repeatedly on the same instance appends
+     * results to the existing collections.
+     *
+     * @param filePath the path to the log file
+     * @throws IOException if the file cannot be read
+     */
+    public void readFile(String filePath) throws IOException {
 
         // Convert the supplied path string into a Path object.
-        Path path = Path.of(FilePath);
+        Path path = Path.of(filePath);
 
         // Read all file lines into a list of strings.
         // Each element represents one line from the file.
@@ -77,40 +120,13 @@ public class LogFileReader {
 
             } else {
 
-                // Parsing succeeded, so store the resulting LogEntry.
-                logEntries.add(newLogEntry);
+                // Preserve the parsed entry and its original source information.
+                ParsedLogLine newParsedLogLine =
+                        new ParsedLogLine(newLogEntry, lineNumber, line);
+
+                // Add the parsed line to the valid-entry collection.
+                logEntries.add(newParsedLogLine);
             }
-        }
-    }
-
-    // Temporary test entry point for checking the reader's behavior.
-    // The final application entry point will coordinate the other components.
-    public static void main(String[] args) throws IOException {
-
-        // Create a reader instance.
-        LogFileReader thisFile = new LogFileReader();
-
-        // Read and process the test log file.
-        thisFile.readFile("test.txt");
-
-        // Print the number of successfully parsed entries.
-        System.out.println(thisFile.getLogEntries().size());
-
-        // Check whether any malformed lines were recorded.
-        if (thisFile.getMalformedLines().isEmpty()) {
-
-            // Report when there are no malformed lines.
-            System.out.println("No Malformed Lines Found");
-
-        } else {
-
-            // Print the original content of the first malformed line.
-            System.out.println(
-                    thisFile.getMalformedLines().get(0).getContent());
-
-            // Print that line's original position in the file.
-            System.out.println(
-                    thisFile.getMalformedLines().get(0).getLineNumber());
         }
     }
 }

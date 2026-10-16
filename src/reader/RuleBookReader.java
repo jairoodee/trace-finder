@@ -11,6 +11,7 @@ import java.util.List;
 import model.Rule;
 import model.UnknownPattern;
 import model.LogEntry;
+import model.ParsedLogLine;
 import analyzer.LogAnalyzer;
 import analyzer.SeverityChecker;
 
@@ -130,14 +131,26 @@ public class RuleBookReader {
         SeverityChecker newCheck = new SeverityChecker();
         LogAnalyzer newAnalysis = new LogAnalyzer();
         LogAnalyzer newAnalysis2 = new LogAnalyzer();
-        int lineNumber = 2;
-        String rawContent = "2026-10-15T10:01:00|DEBUG|192.168.1.20|server|Unexpected event";
+        LogFileReader newlogReader = new LogFileReader();
+        newlogReader.readFile("test.txt");
+        for(int i = 0; i < newlogReader.getLogEntries().size(); i++){
+            ParsedLogLine newParsedLogLine = newlogReader.getLogEntries().get(i);
+            newAnalysis.analyzeEntry(newCheck, newParsedLogLine.getLogEntry(), newRuleBook, newParsedLogLine.getLineNumber(), newParsedLogLine.getRawContent());
+        
+        }
+        System.out.println("Flagged entries: " + newAnalysis.getFlaggedEntries().size());
+        System.out.println("Unknown patterns: " + newAnalysis.getUnknownPatterns().size());
+        System.out.println("Malformed lines: " + newlogReader.getMalformedLines().size());
+        // int lineNumber = 2;
+        // String rawContent = "2026-10-15T10:01:00|DEBUG|192.168.1.20|server|Unexpected event";
         // UnknownPattern newLog = new UnknownPattern(2, "2026-10-15T10:01:00|DEBUG|192.168.1.20|server|Unexpected event");
-        LogEntry newLog = new LogEntry(LocalDateTime.parse("2026-10-15T10:01:00"), "WARN", "192.168.1.20", "server", "Unexpected event");
-        newAnalysis.analyzeEntry(newCheck, newLog, newRuleBook, lineNumber, rawContent );
-        newAnalysis2.analyzeEntry(newCheck, newLog, newRuleBook, lineNumber, rawContent );
+        // LogEntry newLog = new LogEntry(LocalDateTime.parse("2026-10-15T10:01:00"), "WARN", "192.168.1.20", "server", "Unexpected event");
+        // newAnalysis2.analyzeEntry(newCheck, newLog, newRuleBook, lineNumber, rawContent );
         // System.out.println(newAnalysis.getUnknownPatterns().size() + " " + lineNumber + " " + rawContent);
-        System.out.println(newAnalysis2.getUnknownPatterns().size());
-        System.out.println(newAnalysis2.getFlaggedEntries().size());
+        // System.out.println(newAnalysis2.getUnknownPatterns().size());
+        // System.out.println(newAnalysis2.getFlaggedEntries().size());
+        // System.out.println(newlogReader.getLogEntries().get(0).getLineNumber());
+        // System.out.println(newlogReader.getLogEntries().get(0).getRawContent());
+
     }
 }
