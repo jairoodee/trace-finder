@@ -2,4 +2,5 @@
 2024-03-15T08:33:10 | WARN | 10.0.0.2 | server02 | LOGIN_FAILED
 2024-03-15T08:34:10 | ALERT | 10.0.0.3 | server03 | ACCESS_DENIED
 2024-03-15T08:35:10 | ERROR | 10.0.0.5 | server01 | Failed login
+2024-03-15T08:32:10 | INFO | 10.0.0.5 | server01 | LOGIN
 This is not a valid log entry

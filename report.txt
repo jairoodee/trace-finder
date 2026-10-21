@@ -1,0 +1,17 @@
+1. Counts by Known Log Level
+INFO: 2
+WARN: 1
+ERROR: 1
+CRITICAL: 0
+
+2. Flagged Entries
+2024-03-15T08:35:10 | ERROR | 10.0.0.5
+
+3. Suspicious IP Addresses
+10.0.0.5: 2 entries
+
+4. Unknown Patterns
+Line 3: 2024-03-15T08:34:10 | ALERT | 10.0.0.3 | server03 | ACCESS_DENIED
+
+5. Malformed Lines
+Line 6: This is not a valid log entry
