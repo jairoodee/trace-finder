@@ -1,2 +1,18 @@
 out/
 tracefinder.jar
+
+# TraceFinder test input files
+empty.txt
+malformed-only.txt
+unknown-test.txt
+
+# TraceFinder test rulebooks
+empty-rules.csv
+header-only.csv
+blank-rule.csv
+duplicate-rules.csv
+invalid-score.csv
+invalid-format.csv
+
+# Generated test reports
+*-report.txt
