@@ -69,10 +69,14 @@ public class ReportWriter {
         // Format and print the result
         String formattedDateTime = now.format(formatter);
 
-        report.append("=== Log Analysis Report ===\n");
-        report.append("Generated: ").append(formattedDateTime).append("\n");
+        report.append("=== Log Analysis Report ===").append(System.lineSeparator());
+        report.append("Generated: ").append(formattedDateTime);
+        report.append(System.lineSeparator());
 
-        report.append("--- Activity Summary ---\n");
+        // Add a blank line before Activity Summary.
+        report.append(System.lineSeparator());
+
+        report.append("--- Activity Summary ---").append(System.lineSeparator());
 
         // Count successfully parsed entries for each level defined in the rulebook.
         for (int i = 0; i < ruleBookReader.getRules().size(); i++) {
