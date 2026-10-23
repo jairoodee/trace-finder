@@ -1,4 +1,3 @@
-
 package writer;
 
 import model.MalformedLine;
@@ -12,6 +11,8 @@ import java.util.List;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.stream.Collectors;
 
 /**
@@ -60,7 +61,18 @@ public class ReportWriter {
 
         // Build the report in memory before writing it to the destination.
         StringBuilder report = new StringBuilder();
-        report.append("1. Counts by Known Log Level\n");
+
+        // Get the current date and time
+        LocalDateTime now = LocalDateTime.now();
+        // Define the pattern: yyyy-MM-dd HH:mm:ss
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        // Format and print the result
+        String formattedDateTime = now.format(formatter);
+
+        report.append("=== Log Analysis Report ===\n");
+        report.append("Generated: ").append(formattedDateTime).append("\n");
+
+        report.append("--- Activity Summary ---\n");
 
         // Count successfully parsed entries for each level defined in the rulebook.
         for (int i = 0; i < ruleBookReader.getRules().size(); i++) {
@@ -79,7 +91,7 @@ public class ReportWriter {
         }
 
         // List entries whose severity scores meet the flagging threshold.
-        report.append("\n2. Flagged Entries\n");
+        report.append("\n--- Flagged Entries ---\n");
 
         for (int i = 0; i < flaggedEntries.size(); i++) {
             report.append(
@@ -90,7 +102,7 @@ public class ReportWriter {
         }
 
         // Derive unique suspicious IPs from the flagged entries.
-        report.append("\n3. Suspicious IP Addresses\n");
+        report.append("\n--- Suspicious Activity by IP ---\n");
 
         List<String> flaggedIPList = flaggedEntries.stream()
             .map(LogEntry::getSourceIP)
@@ -113,7 +125,7 @@ public class ReportWriter {
         }
 
         // Preserve the original line number and content of unknown-level entries.
-        report.append("\n4. Unknown Patterns\n");
+        report.append("\n--- Unknown Patterns ---\n");
 
         for (int i = 0; i < unknownPatterns.size(); i++) {
             report.append(
@@ -125,7 +137,7 @@ public class ReportWriter {
         }
 
         // Preserve the original line number and content of malformed entries.
-        report.append("\n5. Malformed Lines\n");
+        report.append("\n--- Malformed Lines ---\n");
 
         for (int i = 0; i < malformedLines.size(); i++) {
             report.append(

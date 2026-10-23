@@ -15,8 +15,14 @@ duplicate-rules.csv
 invalid-score.csv
 invalid-format.csv
 
-# Generated test reports
+# Local test fixtures and generated reports
+test.txt
+report.txt
 *-report.txt
+
+# JVM crash and replay logs
+hs_err_pid*.log
+replay_pid*.log
 
 # Maven build output
 target/
