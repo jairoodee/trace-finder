@@ -29,7 +29,7 @@ class TraceFinderIT {
         String[] command = {
             "java",
             "-jar",
-            "target/tracefinder-1.0-SNAPSHOT.jar"
+            "target/tracefinder.jar"
         };
 
         ProcessBuilder processBuilder = new ProcessBuilder(command);
@@ -73,7 +73,7 @@ class TraceFinderIT {
         String[] command = {
             "java",
             "-jar",
-            "target/tracefinder-1.0-SNAPSHOT.jar",
+            "target/tracefinder.jar",
             "missing-logs.txt",
             "rules.csv",
             "report.txt"
@@ -123,7 +123,7 @@ class TraceFinderIT {
         String[] command = {
             "java",
             "-jar",
-            "target/tracefinder-1.0-SNAPSHOT.jar",
+            "target/tracefinder.jar",
             "logs.txt",
             "invalid-score.csv",
             "report.txt"
@@ -176,7 +176,7 @@ class TraceFinderIT {
         String[] command = {
             "java",
             "-jar",
-            "target/tracefinder-1.0-SNAPSHOT.jar",
+            "target/tracefinder.jar",
             "logs.txt",
             "rules.csv",
             reportFile.toString()
@@ -240,5 +240,104 @@ class TraceFinderIT {
             report.contains("--- Malformed Lines ---"),
             "Malformed Lines section is missing"
         );
+    }
+
+    /**
+     * Verifies that TraceFinder reports a missing rulebook file
+     * and exits with status code 1.
+     *
+     * @throws IOException if the process output cannot be read
+     * @throws InterruptedException if waiting for the process is interrupted
+     */
+    @Test
+    void main_missingRulebook_printsErrorAndExitsWithOne()
+            throws IOException, InterruptedException {
+
+        String[] command = {
+            "java", "-jar", "target/tracefinder.jar",
+            "logs.txt", "missing-rules.csv", "report.txt"
+        };
+
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        Process process = processBuilder.start();
+
+        String output;
+
+        try (var inputStream = process.getInputStream()) {
+            output = new String(
+                inputStream.readAllBytes(),
+                StandardCharsets.UTF_8
+            );
+        }
+
+        assertTrue(
+            output.contains("Error: Could not read rulebook file: missing-rules.csv"),
+            "Expected an error message identifying the missing rulebook"
+        );
+
+        assertEquals(
+            1,
+            process.waitFor(),
+            "Expected TraceFinder to exit with status code 1"
+        );
+    }
+
+    /**
+     * Verifies that an empty log file produces a valid report containing
+     * all five sections and that TraceFinder exits successfully.
+     *
+     * @throws IOException if a test file cannot be created or read
+     * @throws InterruptedException if waiting for the process is interrupted
+     */
+    @Test
+    void main_emptyLogFile_generatesReportAndExitsWithZero()
+            throws IOException, InterruptedException {
+
+        // Create an empty log file and a destination for the report.
+        Path emptyLogFile = tempDir.resolve("empty-logs.txt");
+        Files.createFile(emptyLogFile);
+
+        Path reportFile = tempDir.resolve("empty-report.txt");
+
+        String[] command = {
+            "java", "-jar", "target/tracefinder.jar",
+            emptyLogFile.toString(), "rules.csv", reportFile.toString()
+        };
+
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        Process process = processBuilder.start();
+
+        String output;
+
+        try (var inputStream = process.getInputStream()) {
+            output = new String(
+                inputStream.readAllBytes(),
+                StandardCharsets.UTF_8
+            );
+        }
+
+        // Confirm that processing the empty file succeeds.
+        assertEquals(
+            0,
+            process.waitFor(),
+            "Expected TraceFinder to exit with status code 0. Output: " + output
+        );
+
+        // Confirm that the report was created.
+        assertTrue(Files.exists(reportFile), "Report file was not created");
+
+        String report = Files.readString(reportFile);
+
+        // An empty log should still produce every required report section.
+        assertTrue(report.contains("--- Activity Summary ---"),
+            "Activity Summary section is missing");
+        assertTrue(report.contains("--- Flagged Entries ---"),
+            "Flagged Entries section is missing");
+        assertTrue(report.contains("--- Suspicious Activity by IP ---"),
+            "Suspicious Activity by IP section is missing");
+        assertTrue(report.contains("--- Unknown Patterns ---"),
+            "Unknown Patterns section is missing");
+        assertTrue(report.contains("--- Malformed Lines ---"),
+            "Malformed Lines section is missing");
     }
 }
