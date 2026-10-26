@@ -26,3 +26,6 @@ replay_pid*.log
 
 # Maven build output
 target/
+
+# Maven build output
+.vscode
