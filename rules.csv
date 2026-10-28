@@ -1,4 +1,5 @@
+level,severity_score
 INFO,1
-WARN,2
-ERROR,3
-CRITICAL,5
+WARN,3
+ERROR,5
+ALERT,9
