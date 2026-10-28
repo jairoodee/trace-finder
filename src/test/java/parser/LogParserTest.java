@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import model.LogEntry;
 
 class LogParserTest {
@@ -21,16 +23,16 @@ class LogParserTest {
         LogParser parser = new LogParser();
 
         LogEntry parsedResult = parser.parse(
-            "2024-03-15T08:32:10 | INFO | 10.0.0.1 | server01 | LOGIN"
+            "2024-03-15 02:14:08 | INFO | 192.168.1.45 | /login | success"
         );
 
         assertNotNull(parsedResult);
         assertEquals("INFO", parsedResult.getLevel());
-        assertEquals("10.0.0.1", parsedResult.getSourceIP());
-        assertEquals("server01", parsedResult.getTarget());
-        assertEquals("LOGIN", parsedResult.getAction());
+        assertEquals("192.168.1.45", parsedResult.getSourceIP());
+        assertEquals("/login", parsedResult.getTarget());
+        assertEquals("success", parsedResult.getAction());
         assertEquals(
-            LocalDateTime.parse("2024-03-15T08:32:10"),
+            LocalDateTime.parse("2024-03-15T02:14:08"),
             parsedResult.getTimestamp()
         );
     }
@@ -44,7 +46,7 @@ class LogParserTest {
         LogParser parser = new LogParser();
 
         LogEntry parsedResult = parser.parse(
-            "2024-03-15T08:32:10 | WARN | 192.168.1.10 | server01"
+            "2024-03-15 08:32:10 | WARN | 192.168.1.10 | server01"
         );
 
         assertNull(parsedResult);

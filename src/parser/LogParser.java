@@ -2,6 +2,7 @@ package parser;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
+import java.time.format.DateTimeFormatter;
 import model.LogEntry;
 
 /**
@@ -34,10 +35,11 @@ public class LogParser {
             return null;
         }
 
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         LocalDateTime timestamp;
-
+        
         try {
-            timestamp = LocalDateTime.parse(parts[0]);
+            timestamp = LocalDateTime.parse(parts[0], formatter);
         } catch (DateTimeParseException e) {
             return null;
         }

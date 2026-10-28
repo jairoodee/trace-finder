@@ -24,7 +24,7 @@ class LogFileReaderTest {
     @Test
     void readFile_validLine_storesParsedEntry() throws IOException {
         Path logFile = tempDir.resolve("valid.log");
-        String newLog = "2024-03-15T08:32:10 | INFO | 10.0.0.1 | server01 | LOGIN";
+        String newLog = "2024-03-15 08:32:10 | INFO | 10.0.0.1 | server01 | LOGIN";
 
         Files.writeString(logFile, newLog);
 
@@ -45,7 +45,7 @@ class LogFileReaderTest {
     @Test
     void readFile_malformedLine_storesMalformedRecord() throws IOException {
         Path logFile = tempDir.resolve("malformed.log");
-        String newLog = "2024-03-15T08:32:10 | WARN | 192.168.1.10 | server01";
+        String newLog = "2024-03-15 08:32:10 | WARN | 192.168.1.10 | server01";
 
         Files.writeString(logFile, newLog);
 
@@ -67,8 +67,8 @@ class LogFileReaderTest {
     void readFile_mixedLines_separatesValidAndMalformedRecords() throws IOException {
         Path logFile = tempDir.resolve("mixed.log");
         List<String> logs = List.of(
-            "2024-03-15T08:32:10 | INFO | 10.0.0.1 | server01 | LOGIN",
-            "2024-03-15T08:32:11 | WARN | 192.168.1.10 | server01"
+            "2024-03-15 08:32:10 | INFO | 10.0.0.1 | server01 | LOGIN",
+            "2024-03-15 08:32:11 | WARN | 192.168.1.10 | server01"
         );
 
         Files.write(logFile, logs);
