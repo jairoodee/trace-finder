@@ -26,16 +26,16 @@ class RuleBookReaderTest {
     @Test
     void readCSV_validFile_loadsRules() throws IOException {
         Path ruleFile = tempDir.resolve("rules.csv");
-        String newRule = "INFO,1";
+        String newRule = "level,severity_score\nINFO,1\nWARNING,2";
 
         Files.writeString(ruleFile, newRule);
 
         RuleBookReader ruleBookReader = new RuleBookReader();
         ruleBookReader.readCSV(ruleFile.toString());
 
-        assertEquals(1, ruleBookReader.getRules().size());
-        assertEquals("INFO", ruleBookReader.getRules().get(0).getLevel());
-        assertEquals(1, ruleBookReader.getRules().get(0).getScore());
+        assertEquals(2, ruleBookReader.getRules().size());
+        assertEquals("WARNING", ruleBookReader.getRules().get(1).getLevel());
+        assertEquals(2, ruleBookReader.getRules().get(1).getScore());
     }
 
     /**
@@ -64,7 +64,7 @@ class RuleBookReaderTest {
     @Test
     void readCSV_invalidSeverityScore_throwsNumberFormatException() throws IOException {
         Path invalidScoreFile = tempDir.resolve("invalid-score.csv");
-        String newRule = "INFO,high";
+        String newRule = "level,severity_score\nINFO,high";
 
         Files.writeString(invalidScoreFile, newRule);
 
@@ -75,7 +75,7 @@ class RuleBookReaderTest {
         );
 
         assertTrue(exception.getMessage().contains("invalid-score.csv"));
-        assertTrue(exception.getMessage().contains("on row 1"));
+        assertTrue(exception.getMessage().contains("on row 2"));
     }
 
     /**
@@ -87,7 +87,7 @@ class RuleBookReaderTest {
     @Test
     void readCSV_invalidFormat_throwsIllegalArgumentException() throws IOException {
         Path invalidFormatFile = tempDir.resolve("invalid-format.csv");
-        String newRule = "INFO,1,EXTRA";
+        String newRule = "level,severity_score\nINFO,1,EXTRA";
 
         Files.writeString(invalidFormatFile, newRule);
 
@@ -98,7 +98,7 @@ class RuleBookReaderTest {
         );
 
         assertTrue(exception.getMessage().contains("invalid-format.csv"));
-        assertTrue(exception.getMessage().contains("on row 1"));
+        assertTrue(exception.getMessage().contains("on row 2"));
     }
 
     /**
@@ -111,6 +111,7 @@ class RuleBookReaderTest {
     void readCSV_duplicateLevel_throwsIllegalArgumentException() throws IOException {
         Path duplicateFile = tempDir.resolve("duplicate.csv");
         List<String> lines = List.of(
+            "level,severity_score",
             "INFO,1",
             "INFO,2"
         );
@@ -124,6 +125,28 @@ class RuleBookReaderTest {
         );
 
         assertTrue(exception.getMessage().contains("duplicate.csv"));
-        assertTrue(exception.getMessage().contains("on row 2"));
+        assertTrue(exception.getMessage().contains("on row 3"));
+    }
+
+    /**
+     * Verifies that a CSV containing only the header is rejected.
+     *
+     * @throws IOException if writing or reading the temporary CSV file fails
+     */
+    @Test
+    void readCSV_headerOnly_throwsIllegalArgumentException() throws IOException {
+        Path headerOnlyFile = tempDir.resolve("header-only.csv");
+        String newRule = "level,severity_score";
+
+        Files.writeString(headerOnlyFile, newRule);
+
+        RuleBookReader ruleBookReader = new RuleBookReader();
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> ruleBookReader.readCSV(headerOnlyFile.toString())
+        );
+
+        assertTrue(exception.getMessage().contains("header-only.csv"));
     }
 }
