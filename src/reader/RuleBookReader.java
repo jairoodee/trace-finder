@@ -1,5 +1,7 @@
 package reader;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -91,12 +93,12 @@ public class RuleBookReader {
         List<String> lines = Files.readAllLines(path);
 
         // Reject a rulebook that contains no lines.
-        if (lines.isEmpty()) {
-            throw new IllegalArgumentException("Rulebook file contains no rules.");
+        if (lines.size() <= 1) {
+            throw new IllegalArgumentException(filePath + " contains no rules.");
         }
 
         // Process each row individually so errors can identify its line number.
-        for (int i = 0; i < lines.size(); i++) {
+        for (int i = 1; i < lines.size(); i++) {
             try {
                 // Parse the current row and add its rule to the collection.
                 this.readRule(lines.get(i));
@@ -125,6 +127,7 @@ public class RuleBookReader {
                         filePath + e.getMessage() + (i + 1));
             }
         }
+        
     }
 
     /**
