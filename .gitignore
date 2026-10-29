@@ -12,8 +12,6 @@ empty-rules.csv
 header-only.csv
 blank-rule.csv
 duplicate-rules.csv
-invalid-score.csv
-invalid-format.csv
 
 # Local test fixtures and generated reports
 test.txt
