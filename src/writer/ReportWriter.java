@@ -79,7 +79,10 @@ public class ReportWriter {
         report.append("--- Activity Summary ---").append(System.lineSeparator());
 
         // Count successfully parsed entries for each level defined in the rulebook.
-        for (int i = 0; i < ruleBookReader.getRules().size(); i++) {
+        if(ruleBookReader.getRules().isEmpty()){
+            report.append("None\n");
+        } else{
+            for (int i = 0; i < ruleBookReader.getRules().size(); i++) {
             int count = 0;
             Rule rule = ruleBookReader.getRules().get(i);
 
@@ -92,66 +95,87 @@ public class ReportWriter {
             }
 
             report.append(rule.getLevel() + ": " + count + "\n");
+          }
         }
+        
 
         // List entries whose severity scores meet the flagging threshold.
-        report.append("\n--- Flagged Entries ---\n");
+        report.append(System.lineSeparator())
+        .append("--- Flagged Entries ---")
+        .append(System.lineSeparator());
 
-        for (int i = 0; i < flaggedEntries.size(); i++) {
-            report.append(
-                flaggedEntries.get(i).getTimestamp() + " | " +
-                flaggedEntries.get(i).getLevel() + " | " +
-                flaggedEntries.get(i).getSourceIP() + "\n"
-            );
+        if(flaggedEntries.isEmpty()){
+            report.append("None\n");
+        } else{
+            for (int i = 0; i < flaggedEntries.size(); i++) {
+                report.append(
+                    flaggedEntries.get(i).getTimestamp() + " | " +
+                    flaggedEntries.get(i).getLevel() + " | " +
+                    flaggedEntries.get(i).getSourceIP() + "\n"
+                );
+            }
         }
-
         // Derive unique suspicious IPs from the flagged entries.
-        report.append("\n--- Suspicious Activity by IP ---\n");
+        report.append(System.lineSeparator())
+        .append("--- Suspicious Activity by IP ---")
+        .append(System.lineSeparator());
 
         List<String> flaggedIPList = flaggedEntries.stream()
             .map(LogEntry::getSourceIP)
             .distinct()
             .collect(Collectors.toList());
 
-        // Count all parsed entries belonging to each suspicious IP.
-        for (int i = 0; i < flaggedIPList.size(); i++) {
-            int counter = 0;
+        if(flaggedIPList.isEmpty()){
+            report.append("None\n");
+        } else{
+            // Count all parsed entries belonging to each suspicious IP.
+            for (int i = 0; i < flaggedIPList.size(); i++) {
+                int counter = 0;
 
-            for (int j = 0; j < logEntries.size(); j++) {
-                if (logEntries.get(j).getLogEntry().getSourceIP()
-                        .equals(flaggedIPList.get(i))) {
-                    counter++;
+                for (int j = 0; j < logEntries.size(); j++) {
+                    if (logEntries.get(j).getLogEntry().getSourceIP()
+                            .equals(flaggedIPList.get(i))) {
+                        counter++;
+                    }
                 }
+
+                // Append one final count per suspicious IP after counting is complete.
+                report.append(flaggedIPList.get(i) + ": " + counter + " entries\n");
             }
-
-            // Append one final count per suspicious IP after counting is complete.
-            report.append(flaggedIPList.get(i) + ": " + counter + " entries\n");
         }
-
         // Preserve the original line number and content of unknown-level entries.
-        report.append("\n--- Unknown Patterns ---\n");
-
-        for (int i = 0; i < unknownPatterns.size(); i++) {
-            report.append(
-                "Line " +
-                unknownPatterns.get(i).getLineNumber() +
-                ": " +
-                unknownPatterns.get(i).getContent() + "\n"
-            );
+        report.append(System.lineSeparator())
+        .append("--- Unknown Patterns ---")
+        .append(System.lineSeparator());
+        if(unknownPatterns.isEmpty()){
+            report.append("None\n");
+        } else{
+            for (int i = 0; i < unknownPatterns.size(); i++) {
+                report.append(
+                    "Line " +
+                    unknownPatterns.get(i).getLineNumber() +
+                    ": " +
+                    unknownPatterns.get(i).getContent() + "\n"
+                );
+            }
         }
-
         // Preserve the original line number and content of malformed entries.
-        report.append("\n--- Malformed Lines ---\n");
+        report.append(System.lineSeparator())
+        .append("--- Malformed Lines ---")
+        .append(System.lineSeparator());
 
-        for (int i = 0; i < malformedLines.size(); i++) {
-            report.append(
-                "Line " +
-                malformedLines.get(i).getLineNumber() +
-                ": " +
-                malformedLines.get(i).getContent() + "\n"
-            );
+        if(malformedLines.isEmpty()){
+            report.append("None\n");
+        } else{
+            for (int i = 0; i < malformedLines.size(); i++) {
+                report.append(
+                    "Line " +
+                    malformedLines.get(i).getLineNumber() +
+                    ": " +
+                    malformedLines.get(i).getContent() + "\n"
+                );
+            }
         }
-
         // Write the complete report to the caller-supplied destination.
         // IOException is allowed to propagate to the caller for error handling.
         Path filePath = Path.of(outputPath);
