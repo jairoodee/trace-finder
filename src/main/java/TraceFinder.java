@@ -1,11 +1,17 @@
 import java.io.IOException;
 
+import java.util.List;
+
 import analyzer.LogAnalyzer;
 import analyzer.SeverityChecker;
 import model.ParsedLogLine;
+import model.LogEntry;
+import model.MalformedLine;
+import model.UnknownPattern;
 import reader.LogFileReader;
 import reader.RuleBookReader;
 import writer.ReportWriter;
+
 
 /**
  * Entry point for the TraceFinder log analysis application.
@@ -22,6 +28,54 @@ import writer.ReportWriter;
  */
 public class TraceFinder {
 
+        /**
+     * Processes log and rulebook lines entirely in memory and generates a report.
+     *
+     * <p>This method parses the supplied log lines, validates the rulebook,
+     * analyzes valid log entries, and generates the report without reading
+     * from or writing to the file system.</p>
+     *
+     * @param logLines log lines to analyze
+     * @param ruleLines rulebook CSV lines, including the header
+     * @return the generated report text
+     * @throws IllegalArgumentException if the rulebook contains invalid rules
+     */
+    public static String analyzeLines(
+            List<String> logLines,
+            List<String> ruleLines
+    ) {
+        RuleBookReader ruleBook = new RuleBookReader();
+        ruleBook.readLines(ruleLines);
+
+        LogFileReader logReader = new LogFileReader();
+        logReader.readLines(logLines);
+
+        SeverityChecker severityChecker = new SeverityChecker();
+        LogAnalyzer analyzer = new LogAnalyzer();
+
+        // Analyze valid entries while preserving their original line numbers and raw content.
+        for (ParsedLogLine parsedLine : logReader.getLogEntries()) {
+            analyzer.analyzeEntry(
+                severityChecker,
+                parsedLine.getLogEntry(),
+                ruleBook,
+                parsedLine.getLineNumber(),
+                parsedLine.getRawContent()
+            );
+        }
+
+        ReportWriter reportWriter = new ReportWriter();
+
+        // Generate the report in memory without writing to a file.
+        return reportWriter.generateReport(
+            logReader.getLogEntries(),
+            logReader.getMalformedLines(),
+            analyzer.getFlaggedEntries(),
+            analyzer.getUnknownPatterns(),
+            ruleBook
+        );
+    }
+    
     /**
      * Runs the TraceFinder application using command-line arguments.
      *

@@ -8,6 +8,10 @@ import model.Rule;
 import reader.RuleBookReader;
 
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -29,35 +33,26 @@ import java.util.stream.Collectors;
 public class ReportWriter {
 
     /**
-     * Generates the five-section report and writes it to the specified path.
+     * Generates the five-section analysis report in memory.
      *
-     * <p>Suspicious IP addresses are derived from the flagged entries.
-     * Each suspicious IP is listed once, and its count includes every
-     * successfully parsed log entry associated with that IP, not only
-     * flagged entries.</p>
+     * <p>Suspicious IP addresses are derived from flagged entries.
+     * Their counts include all successfully parsed entries associated
+     * with each suspicious IP.</p>
      *
-     * <p>All five section headings are included even when a section has
-     * no entries.</p>
-     *
-     * @param logEntries successfully parsed log lines, including their
-     *                   original line numbers and raw content
+     * @param logEntries successfully parsed log lines
      * @param malformedLines log lines that could not be parsed
-     * @param flaggedEntries known-level log entries whose severity meets
-     *                      the configured flagging threshold
-     * @param unknownPatterns entries whose log level is not in the rulebook
-     * @param ruleBookReader provides the configured rules for known levels
-     *                       and level counts
-     * @param outputPath destination path for the generated report
-     * @throws IOException if the report cannot be written to the destination
+     * @param flaggedEntries entries that meet the flagging threshold
+     * @param unknownPatterns entries with unrecognized log levels
+     * @param ruleBookReader provides configured severity rules
+     * @return the complete report as a string
      */
-    public void writeReport(
+    public String generateReport(
         List<ParsedLogLine> logEntries,
         List<MalformedLine> malformedLines,
         List<LogEntry> flaggedEntries,
         List<UnknownPattern> unknownPatterns,
-        RuleBookReader ruleBookReader,
-        String outputPath
-    ) throws IOException {
+        RuleBookReader ruleBookReader
+    ) {
 
         // Build the report in memory before writing it to the destination.
         StringBuilder report = new StringBuilder();
@@ -98,51 +93,86 @@ public class ReportWriter {
           }
         }
         
-
-        // List entries whose severity scores meet the flagging threshold.
+        // List flagged entries in descending order of their configured severity scores.
         report.append(System.lineSeparator())
-        .append("--- Flagged Entries ---")
-        .append(System.lineSeparator());
+            .append("--- Flagged Entries ---")
+            .append(System.lineSeparator());
 
-        if(flaggedEntries.isEmpty()){
-            report.append("None\n");
-        } else{
-            for (int i = 0; i < flaggedEntries.size(); i++) {
+        if (flaggedEntries.isEmpty()) {
+            report.append("None").append(System.lineSeparator());
+        } else {
+            // Sort a copy so the caller's original list remains unchanged.
+            List<LogEntry> sortedFlaggedEntries = new ArrayList<>(flaggedEntries);
+
+            sortedFlaggedEntries.sort(
+                Comparator.comparingInt((LogEntry entry) ->
+                    ruleBookReader.getRules().stream()
+                        .filter(rule -> rule.getLevel().equals(entry.getLevel()))
+                        .mapToInt(Rule::getScore)
+                        .findFirst()
+                        .orElse(Integer.MIN_VALUE)
+                ).reversed()
+            );
+
+            // Write each entry from highest to lowest severity score.
+            for (int i = 0; i < sortedFlaggedEntries.size(); i++) {
+                LogEntry entry = sortedFlaggedEntries.get(i);
+
                 report.append(
-                    flaggedEntries.get(i).getTimestamp() + " | " +
-                    flaggedEntries.get(i).getLevel() + " | " +
-                    flaggedEntries.get(i).getSourceIP() + "\n"
+                    entry.getTimestamp() + " | " +
+                    entry.getLevel() + " | " +
+                    entry.getSourceIP() + System.lineSeparator()
                 );
             }
         }
-        // Derive unique suspicious IPs from the flagged entries.
+        
+      // Derive unique suspicious IPs from the flagged entries.
         report.append(System.lineSeparator())
-        .append("--- Suspicious Activity by IP ---")
-        .append(System.lineSeparator());
+            .append("--- Suspicious Activity by IP ---")
+            .append(System.lineSeparator());
 
         List<String> flaggedIPList = flaggedEntries.stream()
             .map(LogEntry::getSourceIP)
             .distinct()
             .collect(Collectors.toList());
 
-        if(flaggedIPList.isEmpty()){
-            report.append("None\n");
-        } else{
+        if (flaggedIPList.isEmpty()) {
+            report.append("None").append(System.lineSeparator());
+        } else {
             // Count all parsed entries belonging to each suspicious IP.
-            for (int i = 0; i < flaggedIPList.size(); i++) {
+            Map<String, Integer> suspiciousIPCounts = new LinkedHashMap<>();
+
+            for (String ip : flaggedIPList) {
                 int counter = 0;
 
-                for (int j = 0; j < logEntries.size(); j++) {
-                    if (logEntries.get(j).getLogEntry().getSourceIP()
-                            .equals(flaggedIPList.get(i))) {
+                for (ParsedLogLine parsedLogLine : logEntries) {
+                    if (parsedLogLine.getLogEntry().getSourceIP().equals(ip)) {
                         counter++;
                     }
                 }
 
-                // Append one final count per suspicious IP after counting is complete.
-                report.append(flaggedIPList.get(i) + ": " + counter + " entries\n");
+                suspiciousIPCounts.put(ip, counter);
+            }
+
+            // Sort suspicious IPs by their total entry counts, highest first.
+            List<Map.Entry<String, Integer>> sortedIPCounts =
+                new ArrayList<>(suspiciousIPCounts.entrySet());
+
+            sortedIPCounts.sort(
+                Map.Entry.<String, Integer>comparingByValue().reversed()
+            );
+
+            // Write each IP and its count in descending order.
+            for (Map.Entry<String, Integer> entry : sortedIPCounts) {
+                report.append(entry.getKey())
+                    .append(": ")
+                    .append(entry.getValue())
+                    .append(" entries")
+                    .append(System.lineSeparator());
             }
         }
+
+
         // Preserve the original line number and content of unknown-level entries.
         report.append(System.lineSeparator())
         .append("--- Unknown Patterns ---")
@@ -176,9 +206,37 @@ public class ReportWriter {
                 );
             }
         }
-        // Write the complete report to the caller-supplied destination.
-        // IOException is allowed to propagate to the caller for error handling.
-        Path filePath = Path.of(outputPath);
-        Files.writeString(filePath, report.toString());
+        return report.toString();
+    }
+
+    /**
+     * Generates the report and writes it to the specified destination.
+     *
+     * @param logEntries successfully parsed log lines
+     * @param malformedLines log lines that could not be parsed
+     * @param flaggedEntries entries that meet the flagging threshold
+     * @param unknownPatterns entries with unrecognized log levels
+     * @param ruleBookReader provides configured severity rules
+     * @param outputPath destination path for the generated report
+     * @throws IOException if the report cannot be written
+     */
+    public void writeReport(
+        List<ParsedLogLine> logEntries,
+        List<MalformedLine> malformedLines,
+        List<LogEntry> flaggedEntries,
+        List<UnknownPattern> unknownPatterns,
+        RuleBookReader ruleBookReader,
+        String outputPath
+    ) throws IOException {
+
+        String report = generateReport(
+            logEntries,
+            malformedLines,
+            flaggedEntries,
+            unknownPatterns,
+            ruleBookReader
+        );
+
+        Files.writeString(Path.of(outputPath), report);
     }
 }

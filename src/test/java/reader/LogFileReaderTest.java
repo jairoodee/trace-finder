@@ -1,35 +1,25 @@
 package reader;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
+import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-
+/**
+ * Tests log-line processing using in-memory input.
+ */
 class LogFileReaderTest {
-
-    @TempDir
-    Path tempDir;
 
     /**
      * Verifies that a valid log line is stored as a parsed entry,
      * preserving its original line number and raw content.
-     *
-     * @throws IOException if writing or reading the temporary log file fails
      */
     @Test
-    void readFile_validLine_storesParsedEntry() throws IOException {
-        Path logFile = tempDir.resolve("valid.log");
-        String newLog = "2024-03-15 08:32:10 | INFO | 10.0.0.1 | server01 | LOGIN";
-
-        Files.writeString(logFile, newLog);
+    void readLines_validLine_storesParsedEntry() {
+        String newLog =
+                "2024-03-15 08:32:10 | INFO | 10.0.0.1 | server01 | LOGIN";
 
         LogFileReader logFileReader = new LogFileReader();
-        logFileReader.readFile(logFile.toString());
+        logFileReader.readLines(List.of(newLog));
 
         assertEquals(1, logFileReader.getLogEntries().size());
         assertEquals(1, logFileReader.getLogEntries().get(0).getLineNumber());
@@ -39,18 +29,14 @@ class LogFileReaderTest {
     /**
      * Verifies that a malformed log line is stored separately,
      * preserving its original line number and content.
-     *
-     * @throws IOException if writing or reading the temporary log file fails
      */
     @Test
-    void readFile_malformedLine_storesMalformedRecord() throws IOException {
-        Path logFile = tempDir.resolve("malformed.log");
-        String newLog = "2024-03-15 08:32:10 | WARN | 192.168.1.10 | server01";
-
-        Files.writeString(logFile, newLog);
+    void readLines_malformedLine_storesMalformedRecord() {
+        String newLog =
+                "2024-03-15 08:32:10 | WARN | 192.168.1.10 | server01";
 
         LogFileReader logFileReader = new LogFileReader();
-        logFileReader.readFile(logFile.toString());
+        logFileReader.readLines(List.of(newLog));
 
         assertEquals(1, logFileReader.getMalformedLines().size());
         assertEquals(1, logFileReader.getMalformedLines().get(0).getLineNumber());
@@ -58,23 +44,18 @@ class LogFileReaderTest {
     }
 
     /**
-     * Verifies that valid and malformed lines in the same file are
-     * separated correctly and retain their original line numbers and content.
-     *
-     * @throws IOException if writing or reading the temporary log file fails
+     * Verifies that valid and malformed lines are separated correctly
+     * while retaining their original line numbers and content.
      */
     @Test
-    void readFile_mixedLines_separatesValidAndMalformedRecords() throws IOException {
-        Path logFile = tempDir.resolve("mixed.log");
+    void readLines_mixedLines_separatesValidAndMalformedRecords() {
         List<String> logs = List.of(
-            "2024-03-15 08:32:10 | INFO | 10.0.0.1 | server01 | LOGIN",
-            "2024-03-15 08:32:11 | WARN | 192.168.1.10 | server01"
+                "2024-03-15 08:32:10 | INFO | 10.0.0.1 | server01 | LOGIN",
+                "2024-03-15 08:32:11 | WARN | 192.168.1.10 | server01"
         );
 
-        Files.write(logFile, logs);
-
         LogFileReader logFileReader = new LogFileReader();
-        logFileReader.readFile(logFile.toString());
+        logFileReader.readLines(logs);
 
         assertEquals(1, logFileReader.getLogEntries().size());
         assertEquals(1, logFileReader.getMalformedLines().size());
@@ -83,12 +64,12 @@ class LogFileReaderTest {
         assertEquals(2, logFileReader.getMalformedLines().get(0).getLineNumber());
 
         assertEquals(
-            logs.get(0),
-            logFileReader.getLogEntries().get(0).getRawContent()
+                logs.get(0),
+                logFileReader.getLogEntries().get(0).getRawContent()
         );
         assertEquals(
-            logs.get(1),
-            logFileReader.getMalformedLines().get(0).getContent()
+                logs.get(1),
+                logFileReader.getMalformedLines().get(0).getContent()
         );
     }
 }

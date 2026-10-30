@@ -1,152 +1,126 @@
 package reader;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
+
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
-
+/**
+ * Tests rulebook validation using CSV lines constructed in memory.
+ */
 class RuleBookReaderTest {
 
-    @TempDir
-    Path tempDir;
-
     /**
-     * Verifies that a valid CSV rulebook loads its rule with the expected
-     * level and severity score.
-     *
-     * @throws IOException if writing or reading the temporary CSV file fails
+     * Verifies that valid CSV lines produce rules with the expected levels
+     * and severity scores.
      */
     @Test
-    void readCSV_validFile_loadsRules() throws IOException {
-        Path ruleFile = tempDir.resolve("rules.csv");
-        String newRule = "level,severity_score\nINFO,1\nWARNING,2";
+    void readLines_validInput_loadsRules() {
+        List<String> lines = List.of(
+                "level,severity_score",
+                "INFO,1",
+                "WARNING,2"
+        );
 
-        Files.writeString(ruleFile, newRule);
+        RuleBookReader reader = new RuleBookReader();
+        reader.readLines(lines);
 
-        RuleBookReader ruleBookReader = new RuleBookReader();
-        ruleBookReader.readCSV(ruleFile.toString());
-
-        assertEquals(2, ruleBookReader.getRules().size());
-        assertEquals("WARNING", ruleBookReader.getRules().get(1).getLevel());
-        assertEquals(2, ruleBookReader.getRules().get(1).getScore());
+        assertEquals(2, reader.getRules().size());
+        assertEquals("INFO", reader.getRules().get(0).getLevel());
+        assertEquals(1, reader.getRules().get(0).getScore());
+        assertEquals("WARNING", reader.getRules().get(1).getLevel());
+        assertEquals(2, reader.getRules().get(1).getScore());
     }
 
     /**
-     * Verifies that an empty CSV rulebook is rejected.
-     *
-     * @throws IOException if writing or reading the temporary CSV file fails
+     * Verifies that input without any lines is rejected.
      */
     @Test
-    void readCSV_emptyFile_throwsIllegalArgumentException() throws IOException {
-        Path emptyFile = tempDir.resolve("empty.csv");
-        RuleBookReader ruleBookReader = new RuleBookReader();
+    void readLines_emptyInput_throwsIllegalArgumentException() {
+        RuleBookReader reader = new RuleBookReader();
 
-        Files.writeString(emptyFile, "");
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> reader.readLines(List.of())
+        );
+    }
 
-        assertThrows(IllegalArgumentException.class, () -> {
-            ruleBookReader.readCSV(emptyFile.toString());
-        });
+    /**
+     * Verifies that a header without any rules is rejected.
+     */
+    @Test
+    void readLines_headerOnly_throwsIllegalArgumentException() {
+        RuleBookReader reader = new RuleBookReader();
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> reader.readLines(List.of("level,severity_score"))
+        );
+
+        assertTrue(exception.getMessage().contains("no rules"));
     }
 
     /**
      * Verifies that a non-numeric severity score is rejected and the
-     * exception message identifies the file and row.
-     *
-     * @throws IOException if writing or reading the temporary CSV file fails
+     * error identifies the offending row.
      */
     @Test
-    void readCSV_invalidSeverityScore_throwsNumberFormatException() throws IOException {
-        Path invalidScoreFile = tempDir.resolve("invalid-score.csv");
-        String newRule = "level,severity_score\nINFO,high";
-
-        Files.writeString(invalidScoreFile, newRule);
-
-        RuleBookReader ruleBookReader = new RuleBookReader();
-        NumberFormatException exception = assertThrows(
-            NumberFormatException.class,
-            () -> ruleBookReader.readCSV(invalidScoreFile.toString())
-        );
-
-        assertTrue(exception.getMessage().contains("invalid-score.csv"));
-        assertTrue(exception.getMessage().contains("on row 2"));
-    }
-
-    /**
-     * Verifies that a CSV row with an incorrect number of fields is rejected
-     * and the exception message identifies the file and row.
-     *
-     * @throws IOException if writing or reading the temporary CSV file fails
-     */
-    @Test
-    void readCSV_invalidFormat_throwsIllegalArgumentException() throws IOException {
-        Path invalidFormatFile = tempDir.resolve("invalid-format.csv");
-        String newRule = "level,severity_score\nINFO,1,EXTRA";
-
-        Files.writeString(invalidFormatFile, newRule);
-
-        RuleBookReader ruleBookReader = new RuleBookReader();
-        IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> ruleBookReader.readCSV(invalidFormatFile.toString())
-        );
-
-        assertTrue(exception.getMessage().contains("invalid-format.csv"));
-        assertTrue(exception.getMessage().contains("on row 2"));
-    }
-
-    /**
-     * Verifies that duplicate rule levels are rejected and the exception
-     * message identifies the row containing the duplicate.
-     *
-     * @throws IOException if writing or reading the temporary CSV file fails
-     */
-    @Test
-    void readCSV_duplicateLevel_throwsIllegalArgumentException() throws IOException {
-        Path duplicateFile = tempDir.resolve("duplicate.csv");
+    void readLines_invalidSeverityScore_throwsNumberFormatException() {
+        RuleBookReader reader = new RuleBookReader();
         List<String> lines = List.of(
-            "level,severity_score",
-            "INFO,1",
-            "INFO,2"
+                "level,severity_score",
+                "INFO,high"
         );
 
-        Files.write(duplicateFile, lines);
-
-        RuleBookReader ruleBookReader = new RuleBookReader();
-        IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> ruleBookReader.readCSV(duplicateFile.toString())
+        NumberFormatException exception = assertThrows(
+                NumberFormatException.class,
+                () -> reader.readLines(lines)
         );
 
-        assertTrue(exception.getMessage().contains("duplicate.csv"));
-        assertTrue(exception.getMessage().contains("on row 3"));
+        assertTrue(exception.getMessage().contains("on row 2"));
     }
 
     /**
-     * Verifies that a CSV containing only the header is rejected.
-     *
-     * @throws IOException if writing or reading the temporary CSV file fails
+     * Verifies that a row with more than two fields is rejected and
+     * the error identifies the offending row.
      */
     @Test
-    void readCSV_headerOnly_throwsIllegalArgumentException() throws IOException {
-        Path headerOnlyFile = tempDir.resolve("header-only.csv");
-        String newRule = "level,severity_score";
-
-        Files.writeString(headerOnlyFile, newRule);
-
-        RuleBookReader ruleBookReader = new RuleBookReader();
-
-        IllegalArgumentException exception = assertThrows(
-            IllegalArgumentException.class,
-            () -> ruleBookReader.readCSV(headerOnlyFile.toString())
+    void readLines_invalidFormat_throwsIllegalArgumentException() {
+        RuleBookReader reader = new RuleBookReader();
+        List<String> lines = List.of(
+                "level,severity_score",
+                "INFO,1,EXTRA"
         );
 
-        assertTrue(exception.getMessage().contains("header-only.csv"));
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> reader.readLines(lines)
+        );
+
+        assertTrue(exception.getMessage().contains("on row 2"));
+    }
+
+    /**
+     * Verifies that duplicate rule levels are rejected and the error
+     * identifies the row containing the duplicate.
+     */
+    @Test
+    void readLines_duplicateLevel_throwsIllegalArgumentException() {
+        RuleBookReader reader = new RuleBookReader();
+        List<String> lines = List.of(
+                "level,severity_score",
+                "INFO,1",
+                "INFO,2"
+        );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> reader.readLines(lines)
+        );
+
+        assertTrue(exception.getMessage().contains("on row 3"));
     }
 }

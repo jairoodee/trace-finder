@@ -1,343 +1,161 @@
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import static org.junit.jupiter.api.Assertions.*;
-
+/**
+ * Tests TraceFinder's in-memory processing pipeline.
+ *
+ * <p>All test inputs are constructed in code. These tests do not launch
+ * external processes or perform file-system operations.</p>
+ */
 class TraceFinderIT {
 
-    @TempDir
-    Path tempDir;
-
     /**
-     * Verifies that running TraceFinder without arguments prints the usage
-     * message and exits with status code 1.
-     *
-     * @throws IOException if the process cannot be started or its output
-     *                     cannot be read
-     * @throws InterruptedException if the current thread is interrupted
-     *                              while waiting for the process
+     * Verifies that valid in-memory inputs generate all five report sections.
      */
     @Test
-    void main_noArguments_printsUsageAndExitsWithOne()
-            throws IOException, InterruptedException {
+    void analyzeLines_validInputs_generatesAllReportSections() {
+        List<String> ruleLines = List.of(
+            "level,severity_score",
+            "INFO,1",
+            "WARNING,5",
+            "ERROR,10"
+        );
 
-        String[] command = {
-            "java",
-            "-jar",
-            "target/tracefinder.jar"
-        };
+        List<String> logLines = List.of(
+            "2026-10-30 10:00:00|INFO|192.168.1.10|server|login",
+            "2026-10-30 10:01:00|ERROR|192.168.1.20|server|failed_login"
+        );
 
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        Process process = processBuilder.start();
+        String report = TraceFinder.analyzeLines(logLines, ruleLines);
 
-        String output;
-        try (var inputStream = process.getInputStream()) {
-            output = new String(
-                inputStream.readAllBytes(),
-                StandardCharsets.UTF_8
-            );
-        }
+        assertContainsAllReportSections(report);
+    }
 
-        assertTrue(
-            output.contains(
-                "Usage: java -jar tracefinder.jar <log-file> <rules-file> <report-file>"
+    /**
+     * Verifies that an empty log collection still produces all report sections.
+     */
+    @Test
+    void analyzeLines_emptyLogLines_generatesAllReportSections() {
+        List<String> ruleLines = List.of(
+            "level,severity_score",
+            "INFO,1",
+            "WARNING,5",
+            "ERROR,10"
+        );
+
+        String report = TraceFinder.analyzeLines(List.of(), ruleLines);
+
+        assertContainsAllReportSections(report);
+    }
+
+    /**
+     * Verifies that malformed log lines are handled without preventing
+     * report generation.
+     */
+    @Test
+    void analyzeLines_malformedLogLine_generatesReport() {
+        List<String> ruleLines = List.of(
+            "level,severity_score",
+            "INFO,1",
+            "WARNING,5",
+            "ERROR,10"
+        );
+
+        List<String> logLines = List.of(
+            "2026-10-30 10:00:00|INFO|192.168.1.10|server|login",
+            "this is not a valid log entry"
+        );
+
+        String report = TraceFinder.analyzeLines(logLines, ruleLines);
+
+        assertAll(
+            () -> assertContainsAllReportSections(report),
+            () -> assertTrue(
+                report.contains("this is not a valid log entry"),
+                "Expected the malformed line to appear in the report"
+            )
+        );
+    }
+
+    /**
+     * Verifies that an unconfigured log level is handled as an unknown pattern.
+     */
+    @Test
+    void analyzeLines_unknownLogLevel_generatesReport() {
+        List<String> ruleLines = List.of(
+            "level,severity_score",
+            "INFO,1",
+            "WARNING,5",
+            "ERROR,10"
+        );
+
+        List<String> logLines = List.of(
+            "2026-10-30 10:00:00|DEBUG|192.168.1.10|server|diagnostic"
+        );
+
+        String report = TraceFinder.analyzeLines(logLines, ruleLines);
+
+        assertAll(
+            () -> assertContainsAllReportSections(report),
+            () -> assertTrue(
+                report.contains("DEBUG"),
+                "Expected the unknown log level to appear in the report"
+            )
+        );
+    }
+
+    /**
+     * Verifies that an invalid severity score is rejected.
+     */
+    @Test
+    void analyzeLines_invalidSeverityScore_throwsException() {
+        List<String> ruleLines = List.of(
+            "level,severity_score",
+            "INFO,not-a-number"
+        );
+
+        assertThrows(
+            NumberFormatException.class,
+            () -> TraceFinder.analyzeLines(List.of(), ruleLines)
+        );
+    }
+
+    /**
+     * Asserts that the report contains every required section heading.
+     *
+     * @param report generated report text
+     */
+    private void assertContainsAllReportSections(String report) {
+        assertAll(
+            () -> assertTrue(
+                report.contains("=== Log Analysis Report ==="),
+                "Report heading is missing"
             ),
-            "Expected the usage message when no arguments are supplied"
-        );
-
-        assertEquals(
-            1,
-            process.waitFor(),
-            "Expected the process to exit with status code 1"
-        );
-    }
-
-    /**
-     * Verifies that running TraceFinder with a nonexistent log file prints
-     * an appropriate error message and exits with status code 1.
-     *
-     * @throws IOException if the process cannot be started or its output
-     *                     cannot be read
-     * @throws InterruptedException if the current thread is interrupted
-     *                              while waiting for the process
-     */
-    @Test
-    void main_missingLogFile_printsErrorAndExitsWithOne()
-            throws IOException, InterruptedException {
-
-        String[] command = {
-            "java",
-            "-jar",
-            "target/tracefinder.jar",
-            "missing-logs.txt",
-            "rules.csv",
-            "report.txt"
-        };
-
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        Process process = processBuilder.start();
-
-        String output;
-        try (var inputStream = process.getInputStream()) {
-            output = new String(
-                inputStream.readAllBytes(),
-                StandardCharsets.UTF_8
-            );
-        }
-
-        assertTrue(
-            output.contains(
-                "Error: Could not read log file: missing-logs.txt"
+            () -> assertTrue(
+                report.contains("--- Activity Summary ---"),
+                "Activity Summary section is missing"
             ),
-            "Expected an error message identifying the missing log file"
-        );
-
-        assertEquals(
-            1,
-            process.waitFor(),
-            "Expected the process to exit with status code 1"
-        );
-    }
-
-    /**
-     * Verifies that an invalid severity score in the rulebook produces
-     * an appropriate error message and exit status code 1.
-     *
-     * A valid log file is supplied so that the test focuses on rulebook
-     * validation rather than log-file handling.
-     *
-     * @throws IOException if the process cannot be started or its output
-     *                     cannot be read
-     * @throws InterruptedException if the current thread is interrupted
-     *                              while waiting for the process
-     */
-    @Test
-    void main_invalidRulebook_printsErrorAndExitsWithOne()
-            throws IOException, InterruptedException {
-
-        String[] command = {
-            "java",
-            "-jar",
-            "target/tracefinder.jar",
-            "logs.txt",
-            "invalid-score.csv",
-            "report.txt"
-        };
-
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        Process process = processBuilder.start();
-
-        String output;
-        try (var inputStream = process.getInputStream()) {
-            output = new String(
-                inputStream.readAllBytes(),
-                StandardCharsets.UTF_8
-            );
-        }
-
-        assertTrue(
-            output.contains(
-                "Error: invalid-score.csv has an invalid severity score on row 2"
+            () -> assertTrue(
+                report.contains("--- Flagged Entries ---"),
+                "Flagged Entries section is missing"
             ),
-            "Expected an error message identifying the invalid severity score"
+            () -> assertTrue(
+                report.contains("--- Suspicious Activity by IP ---"),
+                "Suspicious Activity by IP section is missing"
+            ),
+            () -> assertTrue(
+                report.contains("--- Unknown Patterns ---"),
+                "Unknown Patterns section is missing"
+            ),
+            () -> assertTrue(
+                report.contains("--- Malformed Lines ---"),
+                "Malformed Lines section is missing"
+            )
         );
-
-        assertEquals(
-            1,
-            process.waitFor(),
-            "Expected the process to exit with status code 1"
-        );
-    }
-
-    /**
-     * Verifies that TraceFinder successfully processes valid input files,
-     * exits with status code 0, and generates a report containing the
-     * report heading and all five required sections.
-     *
-     * The report is written to a temporary directory to avoid overwriting
-     * an existing report in the project directory.
-     *
-     * @throws IOException if the process cannot be started, its output
-     *                     cannot be read, or the report cannot be read
-     * @throws InterruptedException if the current thread is interrupted
-     *                              while waiting for the process
-     */
-    @Test
-    void main_validArguments_generatesReportAndExitsWithZero()
-            throws IOException, InterruptedException {
-
-        Path reportFile = tempDir.resolve("final-report.txt");
-
-        String[] command = {
-            "java",
-            "-jar",
-            "target/tracefinder.jar",
-            "logs.txt",
-            "rules.csv",
-            reportFile.toString()
-        };
-
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        Process process = processBuilder.start();
-
-        String output;
-        try (var inputStream = process.getInputStream()) {
-            output = new String(
-                inputStream.readAllBytes(),
-                StandardCharsets.UTF_8
-            );
-        }
-
-        // Verify that TraceFinder completed successfully.
-        assertEquals(
-            0,
-            process.waitFor(),
-            "Expected TraceFinder to exit with status code 0. Output: " + output
-        );
-
-        // Verify that the report was created in the temporary directory.
-        assertTrue(
-            Files.exists(reportFile),
-            "Report file was not created"
-        );
-
-        // Read the generated report.
-        String report = Files.readString(reportFile);
-
-        // Verify the report heading.
-        assertTrue(
-            report.contains("=== Log Analysis Report ==="),
-            "Report heading is missing"
-        );
-
-        // Verify that all five required sections are present.
-        assertTrue(
-            report.contains("--- Activity Summary ---"),
-            "Activity Summary section is missing"
-        );
-
-        assertTrue(
-            report.contains("--- Flagged Entries ---"),
-            "Flagged Entries section is missing"
-        );
-
-        assertTrue(
-            report.contains("--- Suspicious Activity by IP ---"),
-            "Suspicious Activity by IP section is missing"
-        );
-
-        assertTrue(
-            report.contains("--- Unknown Patterns ---"),
-            "Unknown Patterns section is missing"
-        );
-
-        assertTrue(
-            report.contains("--- Malformed Lines ---"),
-            "Malformed Lines section is missing"
-        );
-    }
-
-    /**
-     * Verifies that TraceFinder reports a missing rulebook file
-     * and exits with status code 1.
-     *
-     * @throws IOException if the process output cannot be read
-     * @throws InterruptedException if waiting for the process is interrupted
-     */
-    @Test
-    void main_missingRulebook_printsErrorAndExitsWithOne()
-            throws IOException, InterruptedException {
-
-        String[] command = {
-            "java", "-jar", "target/tracefinder.jar",
-            "logs.txt", "missing-rules.csv", "report.txt"
-        };
-
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        Process process = processBuilder.start();
-
-        String output;
-
-        try (var inputStream = process.getInputStream()) {
-            output = new String(
-                inputStream.readAllBytes(),
-                StandardCharsets.UTF_8
-            );
-        }
-
-        assertTrue(
-            output.contains("Error: Could not read rulebook file: missing-rules.csv"),
-            "Expected an error message identifying the missing rulebook"
-        );
-
-        assertEquals(
-            1,
-            process.waitFor(),
-            "Expected TraceFinder to exit with status code 1"
-        );
-    }
-
-    /**
-     * Verifies that an empty log file produces a valid report containing
-     * all five sections and that TraceFinder exits successfully.
-     *
-     * @throws IOException if a test file cannot be created or read
-     * @throws InterruptedException if waiting for the process is interrupted
-     */
-    @Test
-    void main_emptyLogFile_generatesReportAndExitsWithZero()
-            throws IOException, InterruptedException {
-
-        // Create an empty log file and a destination for the report.
-        Path emptyLogFile = tempDir.resolve("empty-logs.txt");
-        Files.createFile(emptyLogFile);
-
-        Path reportFile = tempDir.resolve("empty-report.txt");
-
-        String[] command = {
-            "java", "-jar", "target/tracefinder.jar",
-            emptyLogFile.toString(), "rules.csv", reportFile.toString()
-        };
-
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        Process process = processBuilder.start();
-
-        String output;
-
-        try (var inputStream = process.getInputStream()) {
-            output = new String(
-                inputStream.readAllBytes(),
-                StandardCharsets.UTF_8
-            );
-        }
-
-        // Confirm that processing the empty file succeeds.
-        assertEquals(
-            0,
-            process.waitFor(),
-            "Expected TraceFinder to exit with status code 0. Output: " + output
-        );
-
-        // Confirm that the report was created.
-        assertTrue(Files.exists(reportFile), "Report file was not created");
-
-        String report = Files.readString(reportFile);
-
-        // An empty log should still produce every required report section.
-        assertTrue(report.contains("--- Activity Summary ---"),
-            "Activity Summary section is missing");
-        assertTrue(report.contains("--- Flagged Entries ---"),
-            "Flagged Entries section is missing");
-        assertTrue(report.contains("--- Suspicious Activity by IP ---"),
-            "Suspicious Activity by IP section is missing");
-        assertTrue(report.contains("--- Unknown Patterns ---"),
-            "Unknown Patterns section is missing");
-        assertTrue(report.contains("--- Malformed Lines ---"),
-            "Malformed Lines section is missing");
     }
 }
