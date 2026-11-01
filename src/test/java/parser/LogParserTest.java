@@ -76,4 +76,19 @@ class LogParserTest {
 
         assertNull(parser.parse(""));
     }
+
+    /**
+     * Verifies that a log line containing more than five fields
+     * is rejected by returning null.
+     */
+    @Test
+    void parse_extraField_returnsNull() {
+        LogParser parser = new LogParser();
+
+        LogEntry parsedResult = parser.parse(
+            "2024-03-15 08:32:10 | WARN | 192.168.1.10 | server01 | Login failed | extra"
+        );
+
+        assertNull(parsedResult);
+    }
 }

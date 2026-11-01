@@ -99,4 +99,50 @@ class SeverityCheckerTest {
 
         assertFalse(severityChecker.isKnownLevel(ruleBookReader, logEntry));
     }
+
+    /**
+     * Verifies that severity matching is case-sensitive.
+     *
+     * A log entry with a differently-cased level should not match
+     * a rulebook entry, even when the letters are otherwise identical.
+     */
+    @Test
+    void checkLogEntry_differentlyCasedLevel_returnsZero() throws Exception {
+        RuleBookReader ruleBookReader = new RuleBookReader();
+        ruleBookReader.readRule("ERROR,4");
+
+        SeverityChecker severityChecker = new SeverityChecker();
+
+        LogEntry logEntry = new LogEntry(
+            LocalDateTime.parse("2024-03-15T08:32:10"),
+            "error",
+            "10.0.0.1",
+            "server01",
+            "LOGIN"
+        );
+
+        assertEquals(0, severityChecker.checkLogEntry(ruleBookReader, logEntry));
+    }
+
+    /**
+     * Verifies that a differently-cased log level is not recognized
+     * as a known level because matching is case-sensitive.
+     */
+    @Test
+    void isKnownLevel_differentlyCasedLevel_returnsFalse() throws Exception {
+        RuleBookReader ruleBookReader = new RuleBookReader();
+        ruleBookReader.readRule("ERROR,4");
+
+        SeverityChecker severityChecker = new SeverityChecker();
+
+        LogEntry logEntry = new LogEntry(
+            LocalDateTime.parse("2024-03-15T08:32:10"),
+            "error",
+            "10.0.0.1",
+            "server01",
+            "LOGIN"
+        );
+
+        assertFalse(severityChecker.isKnownLevel(ruleBookReader, logEntry));
+    }
 }
